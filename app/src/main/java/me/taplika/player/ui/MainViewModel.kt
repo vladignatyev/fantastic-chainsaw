@@ -131,28 +131,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 results.any { it.videoId == song.videoId }
             } ?: listOf(song)
 
-            val playablePairs = candidates.map { candidate ->
-                candidate.videoId to PlayableMedia(
-                    uri = YoutubeResolvingDataSourceFactory.buildYoutubeUri(candidate.videoId),
-                    title = candidate.title,
-                    artist = candidate.artist,
-                    artworkUri = candidate.thumbnailUrl
-                )
-            }
+            val queue = candidates.map(RemoteSong::toPlayableMedia)
+            if (queue.isEmpty()) return@launch
 
-            val startIndex = playablePairs.indexOfFirst { (videoId, _) ->
-                videoId == song.videoId
-            }
+            val startIndex = candidates.indexOfFirst { it.videoId == song.videoId }
+                .takeIf { it >= 0 }
+                ?: 0
 
-            val queue = playablePairs.map { it.second }
-            if (queue.isNotEmpty()) {
-                val resolvedStartIndex = startIndex.takeIf { it >= 0 } ?: 0
-                musicConnection.playQueue(
-                    queue,
-                    startIndex = resolvedStartIndex,
-                    repeatMode = repeatMode.value
-                )
-            }
+            musicConnection.playQueue(
+                queue,
+                startIndex = startIndex,
+                repeatMode = repeatMode.value
+            )
         }
     }
 
@@ -219,5 +209,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sourceType = sourceType,
         sourceId = sourceId,
         artworkUri = artworkUri
+    )
+
+    private fun RemoteSong.toPlayableMedia(): PlayableMedia = PlayableMedia(
+        uri = YoutubeResolvingDataSourceFactory.buildYoutubeUri(videoId),
+        title = title,
+        artist = artist,
+        artworkUri = thumbnailUrl
     )
 }
