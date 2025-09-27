@@ -123,19 +123,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun playRemoteSong(song: RemoteSong) {
         viewModelScope.launch {
-            val resolution = remoteRepository.resolve(song) ?: return@launch
-            musicConnection.playQueue(
-                listOf(
-                    PlayableMedia(
-                        uri = resolution.streamUrl,
-                        title = song.title,
-                        artist = song.artist,
-                        artworkUri = song.thumbnailUrl
+            val candidates = _searchResults.value.takeIf { results ->
+                results.any { it.videoId == song.videoId }
+            } ?: listOf(song)
+
+            val playablePairs = withContext(Dispatchers.IO) {
+                candidates.mapNotNull { candidate ->
+                    remoteRepository.resolve(candidate)?.let { resolution ->
+                        candidate.videoId to PlayableMedia(
+                            uri = resolution.streamUrl,
+                            title = candidate.title,
+                            artist = candidate.artist,
+                            artworkUri = candidate.thumbnailUrl
+                        )
+                    }
+                }
+            }
+
+            val startIndex = playablePairs.indexOfFirst { (videoId, _) ->
+                videoId == song.videoId
+            }
+
+            if (startIndex >= 0) {
+                musicConnection.playQueue(
+                    playablePairs.map { it.second },
+                    startIndex = startIndex,
+                    repeatMode = repeatMode.value
+                )
+            } else {
+                remoteRepository.resolve(song)?.let { resolution ->
+                    musicConnection.playQueue(
+                        listOf(
+                            PlayableMedia(
+                                uri = resolution.streamUrl,
+                                title = song.title,
+                                artist = song.artist,
+                                artworkUri = song.thumbnailUrl
+                            )
+                        ),
+                        startIndex = 0,
+                        repeatMode = repeatMode.value
                     )
-                ),
-                startIndex = 0,
-                repeatMode = repeatMode.value
-            )
+                }
+            }
         }
     }
 

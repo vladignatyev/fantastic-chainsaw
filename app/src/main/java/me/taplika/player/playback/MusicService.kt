@@ -114,8 +114,17 @@ class MusicService : android.app.Service() {
 
         fun pause() = player.pause()
         fun play() = player.play()
-        fun next() = player.seekToNextMediaItem()
-        fun previous() = player.seekToPreviousMediaItem()
+        fun next() {
+            if (player.hasNextMediaItem()) {
+                player.seekToNextMediaItem()
+            }
+        }
+
+        fun previous() {
+            if (player.hasPreviousMediaItem()) {
+                player.seekToPreviousMediaItem()
+            }
+        }
     }
 
     private inner class NotificationListener : PlayerNotificationManager.NotificationListener {
