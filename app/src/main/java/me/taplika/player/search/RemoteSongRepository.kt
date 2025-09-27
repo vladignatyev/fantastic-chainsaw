@@ -6,13 +6,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.taplika.player.data.SongEntity
 import me.taplika.player.data.SongSourceType
+import org.schabi.newpipe.extractor.MediaFormat
+import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ExtractionException
+import org.schabi.newpipe.extractor.exceptions.ParsingException
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.stream.StreamType
+import org.schabi.newpipe.extractor.utils.ExtractorHelper
 import java.io.IOException
 
 class RemoteSongRepository(
@@ -27,23 +31,31 @@ class RemoteSongRepository(
         if (query.isBlank()) return@withContext emptyList()
         try {
             val service = ServiceList.YouTube
-            val extractor = service.getSearchExtractor(query)
-            val info = SearchInfo.getInfo(extractor)
+            val info = SearchInfo.getInfo(service, service.searchQHFactory.fromQuery(query))
+
             info.relatedItems.filterIsInstance<StreamInfoItem>()
                 .filter { item ->
                     item.streamType == StreamType.AUDIO_STREAM ||
                         item.streamType == StreamType.AUDIO_LIVE_STREAM ||
                         item.streamType == StreamType.VIDEO_STREAM
                 }
-                .map { item ->
-                    RemoteSong(
-                        title = item.name,
-                        artist = item.uploaderName,
-                        duration = item.duration.takeIf { it > 0 }?.times(1000) ?: 0L,
-                        url = item.url,
-                        videoId = item.id,
-                        thumbnailUrl = item.thumbnailUrl
-                    )
+                .mapNotNull { item ->
+                    val videoId = try {
+                        service.streamLHFactory.fromUrl(item.url).id
+                    } catch (e: ParsingException) {
+                        null
+                    }
+
+                    videoId?.let {
+                        RemoteSong(
+                            title = item.name,
+                            artist = item.uploaderName,
+                            duration = item.duration.takeIf { it > 0 }?.times(1000) ?: 0L,
+                            url = item.url,
+                            videoId = it,
+                            thumbnailUrl = item.thumbnails.firstOrNull()?.url
+                        )
+                    }
                 }
         } catch (e: ExtractionException) {
             emptyList()
@@ -63,12 +75,15 @@ class RemoteSongRepository(
         try {
             val info = StreamInfo.getInfo(ServiceList.YouTube, url)
             val audioStream = selectBestAudio(info.audioStreams)
-            audioStream?.let {
-                StreamResolution(
-                    streamUrl = it.url,
-                    mimeType = it.format.mimeType
-                )
-            }
+            audioStream
+                ?.takeIf { it.isUrl }
+                ?.let {
+                    val mimeType = it.format?.mimeType ?: MediaFormat.getMimeById(it.formatId)
+                    StreamResolution(
+                        streamUrl = it.content,
+                        mimeType = mimeType
+                    )
+                }
         } catch (e: ExtractionException) {
             null
         } catch (e: IOException) {

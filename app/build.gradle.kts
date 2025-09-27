@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.compose.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.icons)
+    implementation(libs.material)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.androidx.core.ktx)
@@ -75,6 +76,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.urlconnection)
     implementation(libs.newpipe.extractor)
 
     testImplementation(libs.junit)

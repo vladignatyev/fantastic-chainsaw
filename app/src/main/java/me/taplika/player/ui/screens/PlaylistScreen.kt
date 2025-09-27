@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import me.taplika.player.data.PlaylistEntity
 import me.taplika.player.data.SongWithPosition
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistScreen(
     playlist: PlaylistEntity?,
@@ -111,7 +113,7 @@ private fun SongRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!song.artist.isNullOrEmpty()) {
-                    Text(text = song.artist ?: "", style = MaterialTheme.typography.bodySmall)
+                    Text(text = song.artist, style = MaterialTheme.typography.bodySmall)
                 }
             }
             IconButton(onClick = onPlay) {
