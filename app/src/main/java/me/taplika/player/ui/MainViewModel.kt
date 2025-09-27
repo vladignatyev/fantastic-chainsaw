@@ -131,7 +131,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 results.any { it.videoId == song.videoId }
             } ?: listOf(song)
 
-            val queue = candidates.map(RemoteSong::toPlayableMedia)
+            val queue = candidates.map { it.toPlayableMedia() }
             if (queue.isEmpty()) return@launch
 
             val startIndex = candidates.indexOfFirst { it.videoId == song.videoId }
