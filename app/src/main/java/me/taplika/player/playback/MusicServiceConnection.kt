@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.IBinder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,18 +65,24 @@ class MusicServiceConnection(private val context: Context) {
         if (!isBound) bind()
         val media = items.getOrNull(startIndex).takeIf { items.isNotEmpty() }
             ?: items.firstOrNull()
-        if (media != null) {
-            val currentState = _playerState.value
-            _playerState.value = currentState.copy(
-                isConnected = true,
-                isPlaying = false,
-                isBuffering = true,
-                title = media.title,
-                artist = media.artist,
-                artworkUri = media.artworkUri
-            )
+        media?.let {
+            previewPlayback(it.title, it.artist, it.artworkUri)
         }
         controller?.playQueue(items, startIndex, repeatMode)
+    }
+
+    fun previewPlayback(title: String?, artist: String?, artworkUri: String?) {
+        val currentState = _playerState.value
+        _playerState.value = currentState.copy(
+            isConnected = true,
+            isPlaying = false,
+            isBuffering = true,
+            title = title,
+            artist = artist,
+            artworkUri = artworkUri
+                ?.takeIf { it.isNotBlank() }
+                ?.let(Uri::parse)
+        )
     }
 
     fun setRepeatMode(repeatMode: RepeatMode) {

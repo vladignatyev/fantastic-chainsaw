@@ -122,6 +122,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playRemoteSong(song: RemoteSong) {
+        musicConnection.previewPlayback(
+            title = song.title,
+            artist = song.artist,
+            artworkUri = song.thumbnailUrl
+        )
         viewModelScope.launch {
             val candidates = _searchResults.value.takeIf { results ->
                 results.any { it.videoId == song.videoId }
@@ -173,6 +178,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val songs = libraryRepository.playlistSongs(playlistId).first()
             if (songs.isEmpty()) return@launch
+            val targetSong = songs.firstOrNull { it.songId == songId } ?: songs.first()
+            musicConnection.previewPlayback(
+                title = targetSong.title,
+                artist = targetSong.artist,
+                artworkUri = targetSong.artworkUri
+            )
             val playablePairs = withContext(Dispatchers.IO) {
                 songs.mapNotNull { song ->
                     val playable = when (song.sourceType) {
