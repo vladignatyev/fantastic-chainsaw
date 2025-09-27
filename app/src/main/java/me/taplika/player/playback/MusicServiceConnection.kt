@@ -96,6 +96,10 @@ class MusicServiceConnection(private val context: Context) {
                 _playerState.value = player.snapshot()
             }
 
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                _playerState.value = player.snapshot()
+            }
+
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                 _playerState.value = player.snapshot()
             }
@@ -112,6 +116,7 @@ class MusicServiceConnection(private val context: Context) {
     private fun ExoPlayer.snapshot(): PlayerUiState = PlayerUiState(
         isConnected = true,
         isPlaying = isPlaying,
+        isBuffering = playbackState == Player.STATE_BUFFERING,
         title = mediaMetadata.title?.toString(),
         artist = mediaMetadata.artist?.toString(),
         artworkUri = mediaMetadata.artworkUri
@@ -120,6 +125,7 @@ class MusicServiceConnection(private val context: Context) {
     data class PlayerUiState(
         val isConnected: Boolean = false,
         val isPlaying: Boolean = false,
+        val isBuffering: Boolean = false,
         val title: String? = null,
         val artist: String? = null,
         val artworkUri: Any? = null
