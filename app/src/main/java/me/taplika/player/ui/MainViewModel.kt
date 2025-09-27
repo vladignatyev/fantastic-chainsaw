@@ -23,9 +23,8 @@ import me.taplika.player.playback.PlayableMedia
 import me.taplika.player.playback.RepeatMode
 import me.taplika.player.search.RemoteSongRepository
 import me.taplika.player.search.RemoteSongRepository.RemoteSong
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import me.taplika.player.playback.YoutubeResolvingDataSourceFactory
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val database = MusicDatabase.getInstance(application)
@@ -122,50 +121,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playRemoteSong(song: RemoteSong) {
+        musicConnection.previewPlayback(
+            title = song.title,
+            artist = song.artist,
+            artworkUri = song.thumbnailUrl
+        )
         viewModelScope.launch {
             val candidates = _searchResults.value.takeIf { results ->
                 results.any { it.videoId == song.videoId }
             } ?: listOf(song)
 
-            val playablePairs = withContext(Dispatchers.IO) {
-                candidates.mapNotNull { candidate ->
-                    remoteRepository.resolve(candidate)?.let { resolution ->
-                        candidate.videoId to PlayableMedia(
-                            uri = resolution.streamUrl,
-                            title = candidate.title,
-                            artist = candidate.artist,
-                            artworkUri = candidate.thumbnailUrl
-                        )
-                    }
-                }
-            }
+            val queue = candidates.map(RemoteSong::toPlayableMedia)
+            if (queue.isEmpty()) return@launch
 
-            val startIndex = playablePairs.indexOfFirst { (videoId, _) ->
-                videoId == song.videoId
-            }
+            val startIndex = candidates.indexOfFirst { it.videoId == song.videoId }
+                .takeIf { it >= 0 }
+                ?: 0
 
-            if (startIndex >= 0) {
-                musicConnection.playQueue(
-                    playablePairs.map { it.second },
-                    startIndex = startIndex,
-                    repeatMode = repeatMode.value
-                )
-            } else {
-                remoteRepository.resolve(song)?.let { resolution ->
-                    musicConnection.playQueue(
-                        listOf(
-                            PlayableMedia(
-                                uri = resolution.streamUrl,
-                                title = song.title,
-                                artist = song.artist,
-                                artworkUri = song.thumbnailUrl
-                            )
-                        ),
-                        startIndex = 0,
-                        repeatMode = repeatMode.value
-                    )
-                }
-            }
+            musicConnection.playQueue(
+                queue,
+                startIndex = startIndex,
+                repeatMode = repeatMode.value
+            )
         }
     }
 
@@ -173,29 +150,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val songs = libraryRepository.playlistSongs(playlistId).first()
             if (songs.isEmpty()) return@launch
-            val playablePairs = withContext(Dispatchers.IO) {
-                songs.mapNotNull { song ->
-                    val playable = when (song.sourceType) {
-                        SongSourceType.LOCAL -> PlayableMedia(
-                            uri = song.sourceId,
+            val targetSong = songs.firstOrNull { it.songId == songId } ?: songs.first()
+            musicConnection.previewPlayback(
+                title = targetSong.title,
+                artist = targetSong.artist,
+                artworkUri = targetSong.artworkUri
+            )
+            val playablePairs = songs.mapNotNull { song ->
+                val playable = when (song.sourceType) {
+                    SongSourceType.LOCAL -> PlayableMedia(
+                        uri = song.sourceId,
+                        title = song.title,
+                        artist = song.artist,
+                        artworkUri = song.artworkUri
+                    )
+                    SongSourceType.YOUTUBE -> song.sourceId.takeIf { it.isNotBlank() }?.let { videoId ->
+                        PlayableMedia(
+                            uri = YoutubeResolvingDataSourceFactory.buildYoutubeUri(videoId),
                             title = song.title,
                             artist = song.artist,
                             artworkUri = song.artworkUri
                         )
-                        SongSourceType.YOUTUBE -> {
-                            val resolution = remoteRepository.resolveYoutubeId(song.sourceId)
-                            resolution?.let {
-                                PlayableMedia(
-                                    uri = it.streamUrl,
-                                    title = song.title,
-                                    artist = song.artist,
-                                    artworkUri = song.artworkUri
-                                )
-                            }
-                        }
                     }
-                    playable?.let { song.songId to it }
                 }
+                playable?.let { song.songId to it }
             }
             if (playablePairs.isNotEmpty()) {
                 val startIndex = playablePairs.indexOfFirst { it.first == songId }.coerceAtLeast(0)
@@ -231,5 +209,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sourceType = sourceType,
         sourceId = sourceId,
         artworkUri = artworkUri
+    )
+
+    private fun RemoteSong.toPlayableMedia(): PlayableMedia = PlayableMedia(
+        uri = YoutubeResolvingDataSourceFactory.buildYoutubeUri(videoId),
+        title = title,
+        artist = artist,
+        artworkUri = thumbnailUrl
     )
 }
