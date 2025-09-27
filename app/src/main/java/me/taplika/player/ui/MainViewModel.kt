@@ -23,9 +23,8 @@ import me.taplika.player.playback.PlayableMedia
 import me.taplika.player.playback.RepeatMode
 import me.taplika.player.search.RemoteSongRepository
 import me.taplika.player.search.RemoteSongRepository.RemoteSong
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import me.taplika.player.playback.YoutubeResolvingDataSourceFactory
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val database = MusicDatabase.getInstance(application)
@@ -132,44 +131,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 results.any { it.videoId == song.videoId }
             } ?: listOf(song)
 
-            val playablePairs = withContext(Dispatchers.IO) {
-                candidates.mapNotNull { candidate ->
-                    remoteRepository.resolve(candidate)?.let { resolution ->
-                        candidate.videoId to PlayableMedia(
-                            uri = resolution.streamUrl,
-                            title = candidate.title,
-                            artist = candidate.artist,
-                            artworkUri = candidate.thumbnailUrl
-                        )
-                    }
-                }
+            val playablePairs = candidates.map { candidate ->
+                candidate.videoId to PlayableMedia(
+                    uri = YoutubeResolvingDataSourceFactory.buildYoutubeUri(candidate.videoId),
+                    title = candidate.title,
+                    artist = candidate.artist,
+                    artworkUri = candidate.thumbnailUrl
+                )
             }
 
             val startIndex = playablePairs.indexOfFirst { (videoId, _) ->
                 videoId == song.videoId
             }
 
-            if (startIndex >= 0) {
+            val queue = playablePairs.map { it.second }
+            if (queue.isNotEmpty()) {
+                val resolvedStartIndex = startIndex.takeIf { it >= 0 } ?: 0
                 musicConnection.playQueue(
-                    playablePairs.map { it.second },
-                    startIndex = startIndex,
+                    queue,
+                    startIndex = resolvedStartIndex,
                     repeatMode = repeatMode.value
                 )
-            } else {
-                remoteRepository.resolve(song)?.let { resolution ->
-                    musicConnection.playQueue(
-                        listOf(
-                            PlayableMedia(
-                                uri = resolution.streamUrl,
-                                title = song.title,
-                                artist = song.artist,
-                                artworkUri = song.thumbnailUrl
-                            )
-                        ),
-                        startIndex = 0,
-                        repeatMode = repeatMode.value
-                    )
-                }
             }
         }
     }
@@ -184,29 +166,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 artist = targetSong.artist,
                 artworkUri = targetSong.artworkUri
             )
-            val playablePairs = withContext(Dispatchers.IO) {
-                songs.mapNotNull { song ->
-                    val playable = when (song.sourceType) {
-                        SongSourceType.LOCAL -> PlayableMedia(
-                            uri = song.sourceId,
+            val playablePairs = songs.mapNotNull { song ->
+                val playable = when (song.sourceType) {
+                    SongSourceType.LOCAL -> PlayableMedia(
+                        uri = song.sourceId,
+                        title = song.title,
+                        artist = song.artist,
+                        artworkUri = song.artworkUri
+                    )
+                    SongSourceType.YOUTUBE -> song.sourceId.takeIf { it.isNotBlank() }?.let { videoId ->
+                        PlayableMedia(
+                            uri = YoutubeResolvingDataSourceFactory.buildYoutubeUri(videoId),
                             title = song.title,
                             artist = song.artist,
                             artworkUri = song.artworkUri
                         )
-                        SongSourceType.YOUTUBE -> {
-                            val resolution = remoteRepository.resolveYoutubeId(song.sourceId)
-                            resolution?.let {
-                                PlayableMedia(
-                                    uri = it.streamUrl,
-                                    title = song.title,
-                                    artist = song.artist,
-                                    artworkUri = song.artworkUri
-                                )
-                            }
-                        }
                     }
-                    playable?.let { song.songId to it }
                 }
+                playable?.let { song.songId to it }
             }
             if (playablePairs.isNotEmpty()) {
                 val startIndex = playablePairs.indexOfFirst { it.first == songId }.coerceAtLeast(0)
