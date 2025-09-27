@@ -75,7 +75,7 @@ fun PlayerBar(
 
 @Composable
 private fun ColumnInfo(title: String?, artist: String?) {
-    Column(modifier = Modifier.weight(1f)) {
+    Column() {
         Text(text = title ?: "", style = MaterialTheme.typography.bodyLarge, maxLines = 1)
         if (!artist.isNullOrBlank()) {
             Text(text = artist, style = MaterialTheme.typography.bodySmall, maxLines = 1)
