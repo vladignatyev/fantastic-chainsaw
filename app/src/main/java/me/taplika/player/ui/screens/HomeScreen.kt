@@ -267,7 +267,7 @@ private fun SearchResultItem(
             ) {
                 Text(text = song.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!song.artist.isNullOrEmpty()) {
-                    Text(text = song.artist ?: "", style = MaterialTheme.typography.bodySmall)
+                    Text(text = song.artist, style = MaterialTheme.typography.bodySmall)
                 }
             }
             IconButton(onClick = onPlay) {

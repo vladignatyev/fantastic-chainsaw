@@ -21,8 +21,8 @@
 #-renamesourcefileattribute SourceFile
 
 
-## Rules for NewPipeExtractor
 -keep class org.mozilla.javascript.** { *; }
+#noinspection ShrinkerUnresolvedReference
 -keep class org.mozilla.classfile.ClassFileWriter
 -dontwarn org.mozilla.javascript.tools.**
 
