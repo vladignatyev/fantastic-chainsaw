@@ -76,6 +76,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.urlconnection)
     implementation(libs.newpipe.extractor)
 
     testImplementation(libs.junit)
