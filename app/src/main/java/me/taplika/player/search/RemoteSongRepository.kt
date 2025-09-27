@@ -8,6 +8,7 @@ import me.taplika.player.data.SongEntity
 import me.taplika.player.data.SongSourceType
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ExtractionException
+import org.schabi.newpipe.extractor.exceptions.ParsingException
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
@@ -35,15 +36,23 @@ class RemoteSongRepository(
                         item.streamType == StreamType.AUDIO_LIVE_STREAM ||
                         item.streamType == StreamType.VIDEO_STREAM
                 }
-                .map { item ->
-                    RemoteSong(
-                        title = item.name,
-                        artist = item.uploaderName,
-                        duration = item.duration.takeIf { it > 0 }?.times(1000) ?: 0L,
-                        url = item.url,
-                        videoId = item.id,
-                        thumbnailUrl = item.thumbnailUrl
-                    )
+                .mapNotNull { item ->
+                    val videoId = try {
+                        service.streamLHFactory.fromUrl(item.url).id
+                    } catch (e: ParsingException) {
+                        null
+                    }
+
+                    videoId?.let {
+                        RemoteSong(
+                            title = item.name,
+                            artist = item.uploaderName,
+                            duration = item.duration.takeIf { it > 0 }?.times(1000) ?: 0L,
+                            url = item.url,
+                            videoId = it,
+                            thumbnailUrl = item.thumbnailUrl
+                        )
+                    }
                 }
         } catch (e: ExtractionException) {
             emptyList()
