@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import me.taplika.player.data.SongEntity
 import me.taplika.player.data.SongSourceType
 import org.schabi.newpipe.extractor.MediaFormat
+import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ExtractionException
 import org.schabi.newpipe.extractor.exceptions.ParsingException
@@ -15,6 +16,7 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.stream.StreamType
+import org.schabi.newpipe.extractor.utils.ExtractorHelper
 import java.io.IOException
 
 class RemoteSongRepository(
@@ -29,8 +31,8 @@ class RemoteSongRepository(
         if (query.isBlank()) return@withContext emptyList()
         try {
             val service = ServiceList.YouTube
-            val extractor = service.getSearchExtractor(query)
-            val info = SearchInfo.getInfo(extractor)
+            val info = SearchInfo.getInfo(service, service.searchQHFactory.fromQuery(query))
+
             info.relatedItems.filterIsInstance<StreamInfoItem>()
                 .filter { item ->
                     item.streamType == StreamType.AUDIO_STREAM ||
