@@ -31,6 +31,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.taplika.player.data.PlaylistEntity
 import me.taplika.player.data.SongWithPosition
+import me.taplika.player.playback.MusicServiceConnection.PlayerUiState
+import me.taplika.player.playback.RepeatMode
+import me.taplika.player.ui.widgets.PlayerBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +41,12 @@ fun PlaylistScreen(
     playlist: PlaylistEntity?,
     songs: List<SongWithPosition>,
     playlists: List<PlaylistEntity>,
+    repeatMode: RepeatMode,
+    playerState: PlayerUiState,
+    onToggleRepeat: () -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
     onBack: () -> Unit,
     onPlaySong: (Long) -> Unit,
     onRemoveSong: (Long) -> Unit,
@@ -52,6 +61,16 @@ fun PlaylistScreen(
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
+            )
+        },
+        bottomBar = {
+            PlayerBar(
+                playerState = playerState,
+                repeatMode = repeatMode,
+                onPlayPause = onPlayPause,
+                onNext = onNext,
+                onPrevious = onPrevious,
+                onToggleRepeat = onToggleRepeat
             )
         }
     ) { padding ->

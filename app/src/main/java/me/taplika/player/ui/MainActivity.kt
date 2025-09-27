@@ -61,6 +61,14 @@ fun MusicPlayerRoot(viewModel: MainViewModel) {
         }
     }
 
+    val onPlayPauseAction = {
+        if (playerState.isConnected && playerState.isPlaying) {
+            viewModel.pause()
+        } else {
+            viewModel.play()
+        }
+    }
+
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             HomeScreen(
@@ -88,9 +96,7 @@ fun MusicPlayerRoot(viewModel: MainViewModel) {
                     playlistPickerVisible = true
                 },
                 onToggleRepeat = { viewModel.toggleRepeatMode() },
-                onPlayPause = {
-                    if (playerState.isConnected && playerState.isPlaying) viewModel.pause() else viewModel.play()
-                },
+                onPlayPause = onPlayPauseAction,
                 onNext = { viewModel.next() },
                 onPrevious = { viewModel.previous() },
                 onImportLocal = { pickAudioLauncher.launch(arrayOf("audio/*")) }
@@ -105,6 +111,13 @@ fun MusicPlayerRoot(viewModel: MainViewModel) {
             PlaylistScreen(
                 playlist = playlists.firstOrNull { it.playlistId == playlistId },
                 songs = songs,
+                playlists = playlists,
+                repeatMode = repeatMode,
+                playerState = playerState,
+                onToggleRepeat = { viewModel.toggleRepeatMode() },
+                onPlayPause = onPlayPauseAction,
+                onNext = { viewModel.next() },
+                onPrevious = { viewModel.previous() },
                 onBack = { navController.popBackStack() },
                 onPlaySong = { songId -> playlistId?.let { viewModel.playSongFromPlaylist(it, songId) } },
                 onRemoveSong = { songId -> playlistId?.let { viewModel.removeSongFromPlaylist(it, songId) } },
@@ -112,8 +125,7 @@ fun MusicPlayerRoot(viewModel: MainViewModel) {
                     playlistId?.let { currentId ->
                         viewModel.moveSongToPlaylist(song, target, currentId)
                     }
-                },
-                playlists = playlists
+                }
             )
         }
     }
