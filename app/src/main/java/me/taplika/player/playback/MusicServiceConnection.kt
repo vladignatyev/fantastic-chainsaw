@@ -62,6 +62,19 @@ class MusicServiceConnection(private val context: Context) {
 
     fun playQueue(items: List<PlayableMedia>, startIndex: Int, repeatMode: RepeatMode) {
         if (!isBound) bind()
+        val media = items.getOrNull(startIndex).takeIf { items.isNotEmpty() }
+            ?: items.firstOrNull()
+        if (media != null) {
+            val currentState = _playerState.value
+            _playerState.value = currentState.copy(
+                isConnected = true,
+                isPlaying = false,
+                isBuffering = true,
+                title = media.title,
+                artist = media.artist,
+                artworkUri = media.artworkUri
+            )
+        }
         controller?.playQueue(items, startIndex, repeatMode)
     }
 
